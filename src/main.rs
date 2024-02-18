@@ -1,13 +1,26 @@
-fn main() {
-    let stream = vec!["a".to_string(), "b".to_string(), "c".to_string()]
-        .into_iter()
-        .cycle()
-        .take(10)
-        .chain(
-            (0..10).map(|i| format!("{}", i))
-        )
-        .chain(vec!["a".to_string(), "b".to_string(), "c".to_string()])
-        .collect::<Vec<_>>();
+use std::sync::{Arc, Mutex};
+// use std::thread;
 
-    println!("{:?}", stream);
+fn main() {
+    let counter = Arc::new(Mutex::new(0));
+
+    {
+        let counter = Arc::clone(&counter);
+        let mut num = counter.lock().unwrap();
+        *num += 2;
+    }
+
+    {
+        let counter = Arc::clone(&counter);
+        let mut num = counter.lock().unwrap();
+        *num += 3;
+    }
+
+    {
+        let counter = Arc::clone(&counter);
+        let mut num = counter.lock().unwrap();
+        *num += 4;
+    }
+
+    println!("{:?}", counter);
 }
