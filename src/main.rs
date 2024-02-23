@@ -23,30 +23,35 @@ fn main() {
     // 2つのサイコロを同時に振り、それぞれの結果を同時アクセスが可能
     // な参照に格納し、その値を結果として返す
     let stored = Arc::new(Mutex::new(Vec::<u8>::new()));
+    let mut handles = vec![];
     for _ in 0..2 {
         let stored = Arc::clone(&stored);
         let handle = thread::spawn(move || {
             stored.lock().unwrap().push(cast_the_die());
         });
-        handle.join().unwrap();
+        handles.push(handle);
     }
+    handles.into_iter().for_each(|h| h.join().unwrap());
     println!("{:?}", stored);
 
     // 3つのサイコロを同時に振り、それぞれの結果を同時アクセスが可能
     // な参照に格納し、その値を結果として返す
     let stored = Arc::new(Mutex::new(Vec::<u8>::new()));
+    let mut handles = vec![];
     for _ in 0..3 {
         let stored = Arc::clone(&stored);
         let handle = thread::spawn(move || {
             stored.lock().unwrap().push(cast_the_die());
         });
-        handle.join().unwrap();
+        handles.push(handle);
     }
+    handles.into_iter().for_each(|h| h.join().unwrap());
     println!("{:?}", stored);
 
     // 100個のサイコロを同時に振り、6の目の合計数を同時アクセスが可能
     // な参照に格納し、その値を結果として返す
     let counter = Arc::new(Mutex::new(0));
+    let mut handles = vec![];
     for _ in 0..100 {
         let counter = Arc::clone(&counter);
         let handle = thread::spawn(move || {
@@ -55,8 +60,9 @@ fn main() {
                 *num += 1;
             }
         });
-        handle.join().unwrap();
+        handles.push(handle);
     }
+    handles.into_iter().for_each(|h| h.join().unwrap());
     println!("{:?}", counter);
 
     // 100個のサイコロを同時に振り、それぞれの前に1秒間待機し、それら
