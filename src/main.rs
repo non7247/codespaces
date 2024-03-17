@@ -1,7 +1,46 @@
 use reqwest::Client;
 use reqwest::header::{HeaderMap, USER_AGENT};
+use serde::Deserialize;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+
+//#[derive(Debug, Deserialize)]
+//struct Head {
+//    vars: Vec<String>,
+//}
+
+#[derive(Debug, Deserialize)]
+struct Attraction {
+//    #[serde(rename = "type")]
+//    attraction_type: String,
+    value: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct Label {
+//    #[serde(rename = "xml:lang")]
+//    lang: String,
+//    #[serde(rename = "type")]
+//    label_type: String,
+    value: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct Binding {
+    attraction: Attraction,
+    label: Label,
+}
+
+#[derive(Debug, Deserialize)]
+struct Results {
+    bindings: Vec<Binding>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Solution {
+//    head: Head,
+    results: Results,
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -33,6 +72,9 @@ SELECT DISTINCT ?attraction ?label WHERE {
 
     let body = response.text().await?;
     println!("{}", body);
+
+    let parsed_json: Solution = serde_json::from_str(&body)?;
+    println!("{:?}", parsed_json);
 
     Ok(())
 }
