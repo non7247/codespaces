@@ -4,24 +4,13 @@ use serde::Deserialize;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
-//#[derive(Debug, Deserialize)]
-//struct Head {
-//    vars: Vec<String>,
-//}
-
 #[derive(Debug, Deserialize)]
 struct Attraction {
-//    #[serde(rename = "type")]
-//    attraction_type: String,
     value: String,
 }
 
 #[derive(Debug, Deserialize)]
 struct Label {
-//    #[serde(rename = "xml:lang")]
-//    lang: String,
-//    #[serde(rename = "type")]
-//    label_type: String,
     value: String,
 }
 
@@ -38,7 +27,6 @@ struct Results {
 
 #[derive(Debug, Deserialize)]
 struct Solution {
-//    head: Head,
     results: Results,
 }
 
