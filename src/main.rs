@@ -1,88 +1,38 @@
-use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::{Duration, Instant};
-use rand::Rng;
+use reqwest::Client;
+use reqwest::header::{HeaderMap, USER_AGENT};
 
-fn cast_the_die() -> u8 {
-//    println!("The die is cast");
-    let mut rng = rand::thread_rng();
-    rng.gen_range(1..7)
-}
+type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
-fn main() {
-    // 1秒待機してから2つのサイコロを振り、両方が終わるのを待って
-    // それらの目の合計を返す
-    thread::sleep(Duration::from_secs(1));
-    let h1 = thread::spawn(|| {cast_the_die()});
-    let h2 = thread::spawn(|| {cast_the_die()});
-    
-    let d1 = h1.join().expect("エラー終了");
-    let d2 = h2.join().expect("エラー終了");
-    println!("{}", d1 + d2);
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = Client::new();
+    let url = "https://query.wikidata.org/sparql";
+    let user_agent = "User-Agent: Other";
 
-    // 2つのサイコロを同時に振り、それぞれの結果を同時アクセスが可能
-    // な参照に格納し、その値を結果として返す
-    let stored = Arc::new(Mutex::new(Vec::<u8>::new()));
-    let mut handles = vec![];
-    for _ in 0..2 {
-        let stored = Arc::clone(&stored);
-        let handle = thread::spawn(move || {
-            stored.lock().unwrap().push(cast_the_die());
-        });
-        handles.push(handle);
-    }
-    handles.into_iter().for_each(|h| h.join().unwrap());
-    println!("{:?}", stored);
+    let mut headers = HeaderMap::new();
+    headers.insert(USER_AGENT, user_agent.parse().unwrap());
 
-    // 3つのサイコロを同時に振り、それぞれの結果を同時アクセスが可能
-    // な参照に格納し、その値を結果として返す
-    let stored = Arc::new(Mutex::new(Vec::<u8>::new()));
-    let mut handles = vec![];
-    for _ in 0..3 {
-        let stored = Arc::clone(&stored);
-        let handle = thread::spawn(move || {
-            stored.lock().unwrap().push(cast_the_die());
-        });
-        handles.push(handle);
-    }
-    handles.into_iter().for_each(|h| h.join().unwrap());
-    println!("{:?}", stored);
+    let response = client
+        .get(url)
+        .headers(headers)
+        .query(&[
+            ("format", "json"),
+            ("query", "
+PREFIX wd: <http://www.wikidata.org/entity/>
+PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT DISTINCT ?attraction ?label WHERE {
+    ?attraction wdt:P31 wd:Q570116;
+                rdfs:label ?label.
+    FILTER(LANG(?label) = \"en\").
+} LIMIT 3
+            ".trim())
+        ])
+        .send()
+        .await?;
 
-    // 100個のサイコロを同時に振り、6の目の合計数を同時アクセスが可能
-    // な参照に格納し、その値を結果として返す
-    let counter = Arc::new(Mutex::new(0));
-    let mut handles = vec![];
-    for _ in 0..100 {
-        let counter = Arc::clone(&counter);
-        let handle = thread::spawn(move || {
-            if cast_the_die() == 6 {
-                let mut num = counter.lock().unwrap();
-                *num += 1;
-            }
-        });
-        handles.push(handle);
-    }
-    handles.into_iter().for_each(|h| h.join().unwrap());
-    println!("{:?}", counter);
+    let body = response.text().await?;
+    println!("{}", body);
 
-    // 100個のサイコロを同時に振り、それぞれの前に1秒間待機し、それら
-    // の合計を(同時参照を使わずに)返す
-    let istart = Instant::now();
-
-    let mut handles = vec![];
-    for _ in 0..100 {
-        let handle = thread::spawn(|| {
-            thread::sleep(Duration::from_secs(1));
-            cast_the_die()
-        });
-        handles.push(handle);
-    }
-
-    let sum: u16 = handles.into_iter()
-        .map(|h| h.join().unwrap() as u16)
-        .sum();
-
-    let istop = Instant::now();
-
-    println!("{:?} {}", istop.duration_since(istart), sum);
+    Ok(())
 }
