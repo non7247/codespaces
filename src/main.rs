@@ -9,6 +9,16 @@ struct Attraction {
     value: String,
 }
 
+impl Attraction {
+    fn get_local_name(&self) -> String {
+        let idx = self.value.rfind("/");
+        match idx {
+            Some(idx) => { self.value[idx + 1..].to_string() },
+            None => String::new()
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 struct Label {
     value: String,
@@ -63,6 +73,10 @@ SELECT DISTINCT ?attraction ?label WHERE {
 
     let parsed_json: Solution = serde_json::from_str(&body)?;
     println!("{:?}", parsed_json);
+
+    for binding in parsed_json.results.bindings.iter() {
+        println!("\"{}\", \"{}\"", binding.attraction.get_local_name(), binding.label.value);
+    }
 
     Ok(())
 }
