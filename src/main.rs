@@ -5,11 +5,11 @@ use serde::Deserialize;
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 #[derive(Debug, Deserialize)]
-struct Attraction {
+struct WikiDataAttraction {
     value: String,
 }
 
-impl Attraction {
+impl WikiDataAttraction {
     fn get_local_name(&self) -> String {
         let idx = self.value.rfind("/");
         match idx {
@@ -20,14 +20,14 @@ impl Attraction {
 }
 
 #[derive(Debug, Deserialize)]
-struct Label {
+struct WikidataLabel {
     value: String,
 }
 
 #[derive(Debug, Deserialize)]
 struct Binding {
-    attraction: Attraction,
-    label: Label,
+    attraction: WikiDataAttraction,
+    label: WikidataLabel,
 }
 
 #[derive(Debug, Deserialize)]
