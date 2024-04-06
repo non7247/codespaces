@@ -1,4 +1,4 @@
-use reqwest::Client;
+use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, USER_AGENT};
 use serde::Deserialize;
 
@@ -40,8 +40,7 @@ struct Solution {
     results: Results,
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     let client = Client::new();
     let url = "https://query.wikidata.org/sparql";
     let user_agent = "User-Agent: Other";
@@ -65,10 +64,9 @@ SELECT DISTINCT ?attraction ?label WHERE {
 } LIMIT 3
             ".trim())
         ])
-        .send()
-        .await?;
+        .send()?;
 
-    let body = response.text().await?;
+    let body = response.text()?;
     println!("{}", body);
 
     let parsed_json: Solution = serde_json::from_str(&body)?;
