@@ -5,11 +5,11 @@ use serde::Deserialize;
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 #[derive(Debug, Deserialize)]
-struct WikiDataAttraction {
+struct WDAttraction {
     value: String,
 }
 
-impl WikiDataAttraction {
+impl WDAttraction {
     fn get_local_name(&self) -> String {
         let idx = self.value.rfind("/");
         match idx {
@@ -20,14 +20,15 @@ impl WikiDataAttraction {
 }
 
 #[derive(Debug, Deserialize)]
-struct WikidataLabel {
+struct WDAttractionLabel {
     value: String,
 }
 
 #[derive(Debug, Deserialize)]
 struct Binding {
-    attraction: WikiDataAttraction,
-    label: WikidataLabel,
+    attraction: WDAttraction,
+    #[serde(rename = "attractionLabel")]
+    attraction_label: WDAttractionLabel,
 }
 
 #[derive(Debug, Deserialize)]
@@ -57,12 +58,26 @@ fn main() -> Result<()> {
 PREFIX wd: <http://www.wikidata.org/entity/>
 PREFIX wdt: <http://www.wikidata.org/prop/direct/>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-SELECT DISTINCT ?attraction ?label WHERE {{
+PREFIX schema: <http://schema.org>
+
+SELECT DISTINCT ?attraction ?attractionLabel ?description
+                ?location ?locationLabel ?population WHERE {{
     ?attraction wdt:P31 wd:Q570116;
-                rdfs:label ?label.
-    FILTER(LANG(?label) = \"en\").
-}} LIMIT {}
-            ", 3).trim())
+                rdfs:label ?attractionLabel;
+                wdt:P131 ?location.
+    FILTER(LANG(?attractionLabel) = \"en\").
+
+    OPTIONAL{{
+        ?attraction schema:description ?description.
+        FILTER(LANG(?description) = \"en\").
+    }}
+                    
+    ?location wdt:P1082 ?population;
+            rdfs:label ?locationLabel;
+    FILTER(LANG(?locationLabel) = \"en\").
+    
+}} ORDER BY DESC(?population) LIMIT 3 
+            ").trim())
         ])
         .send()?;
 
@@ -73,7 +88,11 @@ SELECT DISTINCT ?attraction ?label WHERE {{
     println!("{:?}", parsed_json);
 
     for binding in parsed_json.results.bindings.iter() {
-        println!("\"{}\", \"{}\"", binding.attraction.get_local_name(), binding.label.value);
+        println!(
+            "\"{}\", \"{}\"",
+             binding.attraction.get_local_name(),
+             binding.attraction_label.value
+        );
     }
 
     Ok(())
