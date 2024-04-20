@@ -53,16 +53,16 @@ fn main() -> Result<()> {
         .headers(headers)
         .query(&[
             ("format", "json"),
-            ("query", "
+            ("query", format!("
 PREFIX wd: <http://www.wikidata.org/entity/>
 PREFIX wdt: <http://www.wikidata.org/prop/direct/>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-SELECT DISTINCT ?attraction ?label WHERE {
+SELECT DISTINCT ?attraction ?label WHERE {{
     ?attraction wdt:P31 wd:Q570116;
                 rdfs:label ?label.
     FILTER(LANG(?label) = \"en\").
-} LIMIT 3
-            ".trim())
+}} LIMIT {}
+            ", 3).trim())
         ])
         .send()?;
 
