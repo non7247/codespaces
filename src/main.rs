@@ -5,11 +5,11 @@ use serde::Deserialize;
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 #[derive(Debug, Deserialize)]
-struct WDAttraction {
+struct WDInstance {
     value: String,
 }
 
-impl WDAttraction {
+impl WDInstance {
     fn get_local_name(&self) -> String {
         let idx = self.value.rfind("/");
         match idx {
@@ -20,15 +20,24 @@ impl WDAttraction {
 }
 
 #[derive(Debug, Deserialize)]
-struct WDAttractionLabel {
+struct WDLabel {
+    value: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct WDPopulation {
     value: String,
 }
 
 #[derive(Debug, Deserialize)]
 struct Binding {
-    attraction: WDAttraction,
+    attraction: WDInstance,
     #[serde(rename = "attractionLabel")]
-    attraction_label: WDAttractionLabel,
+    attraction_label: WDLabel,
+    location: WDInstance,
+    #[serde(rename = "locationLabel")]
+    location_label: WDLabel,
+    population: WDPopulation,
 }
 
 #[derive(Debug, Deserialize)]
@@ -89,9 +98,12 @@ SELECT DISTINCT ?attraction ?attractionLabel ?description
 
     for binding in parsed_json.results.bindings.iter() {
         println!(
-            "\"{}\", \"{}\"",
+            "\"{}\", \"{}\", \"{}\", \"{}\", {}",
              binding.attraction.get_local_name(),
-             binding.attraction_label.value
+             binding.attraction_label.value,
+             binding.location.get_local_name(),
+             binding.location_label.value,
+             binding.population.value
         );
     }
 
