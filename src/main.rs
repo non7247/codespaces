@@ -34,6 +34,7 @@ struct Binding {
     attraction: WDInstance,
     #[serde(rename = "attractionLabel")]
     attraction_label: WDLabel,
+    description: Option<String>,
     location: WDInstance,
     #[serde(rename = "locationLabel")]
     location_label: WDLabel,
@@ -98,9 +99,10 @@ SELECT DISTINCT ?attraction ?attractionLabel ?description
 
     for binding in parsed_json.results.bindings.iter() {
         println!(
-            "\"{}\", \"{}\", \"{}\", \"{}\", {}",
+            "\"{}\", \"{}\", \"{:?}\", \"{}\", \"{}\", {}",
              binding.attraction.get_local_name(),
              binding.attraction_label.value,
+             binding.description,
              binding.location.get_local_name(),
              binding.location_label.value,
              binding.population.value
