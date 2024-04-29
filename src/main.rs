@@ -25,12 +25,21 @@ struct WDLabel {
 }
 
 #[derive(Debug, Deserialize)]
-struct WDPopulation {
+struct WDNumber {
     value: String,
 }
 
+impl WDNumber {
+    fn get_number(&self) -> u64 {
+        match self.value.parse::<u64>() {
+            Ok(n) => n,
+            Err(_) => 0,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
-struct Binding {
+struct BindingAttraction {
     attraction: WDInstance,
     #[serde(rename = "attractionLabel")]
     attraction_label: WDLabel,
@@ -38,17 +47,54 @@ struct Binding {
     location: WDInstance,
     #[serde(rename = "locationLabel")]
     location_label: WDLabel,
-    population: WDPopulation,
+    population: WDNumber,
 }
 
 #[derive(Debug, Deserialize)]
-struct Results {
-    bindings: Vec<Binding>,
+struct ResultsAttraction {
+    bindings: Vec<BindingAttraction>,
 }
 
 #[derive(Debug, Deserialize)]
-struct Solution {
-    results: Results,
+struct SolutionAttraction {
+    results: ResultsAttraction,
+}
+
+#[derive(Debug, Deserialize)]
+struct BindingArtist {
+    artist: WDInstance,
+    #[serde(rename = "artistLabel")]
+    artist_label: WDLabel,
+    followers: WDNumber,
+}
+
+#[derive(Debug, Deserialize)]
+struct ResultsArtist {
+    bindings: Vec<BindingArtist>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SolutionArtist {
+    results: ResultsArtist,
+}
+
+#[derive(Debug, Deserialize)]
+struct BindingSubject {
+    subject: WDInstance,
+    #[serde(rename = "subjectLabel")]
+    subject_label: WDLabel,
+    #[serde(rename = "boxOffice")]
+    box_office: WDNumber,
+}
+
+#[derive(Debug, Deserialize)]
+struct ResultSubject {
+    bindings: Vec<BindingSubject>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SolutionSubject {
+    results: ResultSubject,
 }
 
 fn main() -> Result<()> {
@@ -61,7 +107,7 @@ fn main() -> Result<()> {
 
     let response = client
         .get(url)
-        .headers(headers)
+        .headers(headers.clone())
         .query(&[
             ("format", "json"),
             ("query", format!("
@@ -94,7 +140,7 @@ SELECT DISTINCT ?attraction ?attractionLabel ?description
     let body = response.text()?;
     println!("{}", body);
 
-    let parsed_json: Solution = serde_json::from_str(&body)?;
+    let parsed_json: SolutionAttraction = serde_json::from_str(&body)?;
     println!("{:?}", parsed_json);
 
     for binding in parsed_json.results.bindings.iter() {
@@ -105,9 +151,66 @@ SELECT DISTINCT ?attraction ?attractionLabel ?description
              binding.description,
              binding.location.get_local_name(),
              binding.location_label.value,
-             binding.population.value
+             binding.population.get_number()
         );
     }
+
+    let location_id = parsed_json.results.bindings[1].location.get_local_name();
+
+    let response = client
+        .get(url)
+        .headers(headers.clone())
+        .query(&[
+            ("format", "json"),
+            ("query", format!("
+PREFIX wd: <http://www.wikidata.org/entity/>
+PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX schema: <http://schema.org>
+
+SELECT DISTINCT ?artist ?artistLabel ?followers WHERE {{
+    ?artist wdt:P136 ?genre;
+            wdt:P8687 ?followers;
+            rdfs:label ?artistLabel.
+    FILTER(LANG(?artistLabel) = \"en\").
+
+    ?artist wdt:P740 wd:{}
+
+}} ORDER BY DESC(?followers) LIMIT 3
+            ", location_id).trim())
+        ])
+        .send()?;
+
+    let body = response.text()?;
+    println!("{}", body);
+
+    let response = client
+        .get(url)
+        .headers(headers.clone())
+        .query(&[
+            ("format", "json"),
+            ("query", format!("
+PREFIX wd: <http://www.wikidata.org/entity/>
+PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX schema: <http://schema.org>
+
+SELECT DISTINCT ?subject ?subjectLabel ?boxOffice WHERE {{
+    ?subject wdt:P31 wd:Q11424;
+             wdt:P2142 ?boxOffice;
+             rdfs:label ?subjectLabel.
+
+    ?subject wdt:P840 wd:{}
+
+    FILTER(LANG(?subjectLabel) = \"en\").
+
+}} ORDER BY DESC(?boxOffice) LIMIT 3
+            ", location_id).trim())
+        ])
+        .send()?;
+
+    let body = response.text()?;
+    println!("{}", body);
 
     Ok(())
 }
