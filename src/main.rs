@@ -124,6 +124,8 @@ SELECT DISTINCT ?attraction ?attractionLabel ?description
     ?location wdt:P1082 ?population;
             rdfs:label ?locationLabel;
     FILTER(LANG(?locationLabel) = \"en\").
+
+    FILTER(CONTAINS(?attractionLabel, \"Yosemite \")).
     
 }} ORDER BY DESC(?population) LIMIT 3 
             ").trim())
