@@ -97,17 +97,10 @@ struct SolutionSubject {
     results: ResultSubject,
 }
 
-fn main() -> Result<()> {
-    let client = Client::new();
-    let url = "https://query.wikidata.org/sparql";
-    let user_agent = "User-Agent: Other";
-
-    let mut headers = HeaderMap::new();
-    headers.insert(USER_AGENT, user_agent.parse().unwrap());
-
+fn find_attraction(client: &Client, url: &str, headers: HeaderMap) -> Result<Vec<BindingAttraction>> {
     let response = client
         .get(url)
-        .headers(headers.clone())
+        .headers(headers)
         .query(&[
             ("format", "json"),
             ("query", format!("
@@ -138,28 +131,16 @@ SELECT DISTINCT ?attraction ?attractionLabel ?description
         .send()?;
 
     let body = response.text()?;
-    println!("{}", body);
+//    println!("{}", body);
 
-    let parsed_json: SolutionAttraction = serde_json::from_str(&body)?;
-    println!("{:?}", parsed_json);
+    let solution: SolutionAttraction = serde_json::from_str(&body)?;
+    Ok(solution.results.bindings)
+}
 
-    for binding in parsed_json.results.bindings.iter() {
-        println!(
-            "\"{}\", \"{}\", \"{:?}\", \"{}\", \"{}\", {}",
-             binding.attraction.get_local_name(),
-             binding.attraction_label.value,
-             binding.description,
-             binding.location.get_local_name(),
-             binding.location_label.value,
-             binding.population.get_number()
-        );
-    }
-
-    let location_id = parsed_json.results.bindings[1].location.get_local_name();
-
+fn find_artist(client: &Client, url: &str, headers: HeaderMap, location_id: &str) -> Result<Vec<BindingArtist>> {
     let response = client
         .get(url)
-        .headers(headers.clone())
+        .headers(headers)
         .query(&[
             ("format", "json"),
             ("query", format!("
@@ -182,11 +163,16 @@ SELECT DISTINCT ?artist ?artistLabel ?followers WHERE {{
         .send()?;
 
     let body = response.text()?;
-    println!("{}", body);
+//    println!("{}", body);
 
+    let solution: SolutionArtist = serde_json::from_str(&body)?;
+    Ok(solution.results.bindings)
+}
+
+fn find_subject(client: &Client, url: &str, headers: HeaderMap, location_id: &str) -> Result<Vec<BindingSubject>> {
     let response = client
         .get(url)
-        .headers(headers.clone())
+        .headers(headers)
         .query(&[
             ("format", "json"),
             ("query", format!("
@@ -210,7 +196,55 @@ SELECT DISTINCT ?subject ?subjectLabel ?boxOffice WHERE {{
         .send()?;
 
     let body = response.text()?;
-    println!("{}", body);
+//    println!("{}", body);
+
+    let solution: SolutionSubject = serde_json::from_str(&body)?;
+    Ok(solution.results.bindings)
+}
+
+fn main() -> Result<()> {
+    let client = Client::new();
+    let url = "https://query.wikidata.org/sparql";
+    let user_agent = "User-Agent: Other";
+
+    let mut headers = HeaderMap::new();
+    headers.insert(USER_AGENT, user_agent.parse().unwrap());
+
+    let attractions = find_attraction(&client, url, headers.clone())?;
+
+    for attraction in attractions.iter() {
+        println!(
+            "\"{}\", \"{}\", \"{:?}\", \"{}\", \"{}\", {}",
+             attraction.attraction.get_local_name(),
+             attraction.attraction_label.value,
+             attraction.description,
+             attraction.location.get_local_name(),
+             attraction.location_label.value,
+             attraction.population.get_number()
+        );
+
+        let location_id = &attraction.location.get_local_name();
+
+        let artists = find_artist(&client, url, headers.clone(), location_id)?;
+        for artist in artists {
+            println!(
+                "\"{}\", \"{}\", {}",
+                artist.artist.get_local_name(),
+                artist.artist_label.value,
+                artist.followers.get_number()
+            );
+        }
+
+        let subjects = find_subject(&client, url, headers.clone(), location_id)?;
+        for subject in subjects {
+            println!(
+                "\"{}\", \"{}\", {}",
+                subject.subject.get_local_name(),
+                subject.subject_label.value,
+                subject.box_office.get_number()
+            );
+        }
+    }
 
     Ok(())
 }
